@@ -6,7 +6,7 @@ int n, m, c;
 int weight[10][10];
 int tmp[10]={0,};
 int target, start;
-int A, B, tmp_best;
+int tmp_best;
 
 void DFS(int seq, int sum, int squa){
     if(seq==m){
@@ -37,14 +37,18 @@ int main() {
     }
 
     // Please write your code here.
+    int ans=0;
+    int previous_best=0;
     for(int i=0;i<n;++i){
         target=i;
         tmp_best=0;
+
         for(int j=0;j<=n-m;++j){
             start=j;
             tmp[start]=0;
             DFS(0, 0, 0);
         }
+
         int best=0, good=0, second=0, first=0;
         for(int j=0;j<=n-m;++j){
             first=tmp[j];
@@ -67,22 +71,15 @@ int main() {
             }
         }
 
-        if((A+tmp_best)<(best+good)){
-            A=best;
-            B=good;
-        }
-        else{
-            if(A<tmp_best){
-                B=A;
-                A=tmp_best;
-            }
-            else if(B<tmp_best){
-                B=tmp_best;
-            }
-        }
+        if(ans<(previous_best+tmp_best))
+            ans=previous_best+tmp_best;
+        if(ans<(best+good))
+            ans=best+good;
+            
+        if(previous_best<tmp_best)previous_best=tmp_best;
     }
 
-    cout<<A+B;
+    cout<<ans;
 
     return 0;
 }
