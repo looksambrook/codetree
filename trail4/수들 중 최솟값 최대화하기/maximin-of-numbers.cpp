@@ -8,6 +8,7 @@ int ans=0;
 bool visited[10]={false, };
 
 void DFS(int x, int tmp_ans){
+    if(ans>tmp_ans)return;
     if(x==n){
         ans=ans<tmp_ans?tmp_ans:ans;
         return;
