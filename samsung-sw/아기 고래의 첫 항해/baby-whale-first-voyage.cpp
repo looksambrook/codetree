@@ -15,9 +15,10 @@ struct Info
     int c;
     int d;
 
-    /*bool operation(const Info& other) {
-        return r < other.r
-    }*/
+    bool operator<(const Info& other) const{
+        if (r != other.r) return r > other.r;
+        return c > other.c;
+    }
 };
 
 bool is_range(int x, int y) {
@@ -44,7 +45,7 @@ bool first_step() {
 bool second_step() {
     int ds[4] = { 2,1,3,0 };
     queue<Info> q;
-    queue<Info> ans;
+    priority_queue<Info> ans;
     q.push({ r,c,d });
     bool selected[50][50] = { false, };
     selected[r][c] = true;
@@ -73,19 +74,9 @@ bool second_step() {
         }
     }
 
-    r = ans.front().r;
-    c = ans.front().c;
-    d = ans.front().d;
-    ans.pop();
-
-    while (!ans.empty()) {
-        if ((r > ans.front().r)||(r==ans.front().r&&c>ans.front().c)) {
-            r = ans.front().r;
-            c = ans.front().c;
-            d = ans.front().d;
-        }
-        ans.pop();
-    }
+    r = ans.top().r;
+    c = ans.top().c;
+    d = ans.top().d;
     visited[r][c] = true;
     return true;
 }
