@@ -60,6 +60,17 @@ int blending() {
     return dp[w] >= INF ? -1 : dp[w];
 }
 
+// arr[0..n-1]이 오름차순일 때, target 이상인 첫 인덱스를 반환 (없으면 n)
+int lower_idx(int* arr, int n, int target) {
+    int lo = 0, hi = n;               // 답의 후보 구간 [lo, hi]
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (arr[mid] >= target) hi = mid;   // mid도 후보 -> 버리지 않는다
+        else lo = mid + 1;                  // mid는 탈락 -> 버린다
+    }
+    return lo;
+}
+
 long long make_up() {
     static int arr[MAXP];
     int tcnt = 0;
@@ -71,12 +82,16 @@ long long make_up() {
     // (탑, 미들, 베이스) 순서쌍, 같은 향료 중복 사용 허용, 합 >= w 인 경우의 수
     long long ans = 0;
     for (int i = 0; i < tcnt; ++i) {
-        int need = w - arr[i];        // 나머지 두 자리의 합이 need 이상이어야 함
-        int k = tcnt;                 // arr[j] + arr[k-1] >= need 를 만족하는 경계
         for (int j = 0; j < tcnt; ++j) {
-            // arr[j]가 커질수록 경계는 단조 감소 -> 전체 O(tcnt)
-            while (k > 0 && arr[j] + arr[k - 1] >= need) --k;
-            ans += tcnt - k;
+            int need = w - arr[i] - arr[j];   // 베이스 자리가 need 이상이어야 함
+
+            if (need <= arr[0]) {             // 전부 통과
+                ans += tcnt;
+                continue;
+            }
+            if (need > arr[tcnt - 1]) continue;   // 전부 탈락
+
+            ans += tcnt - lower_idx(arr, tcnt, need);
         }
     }
     return ans;
