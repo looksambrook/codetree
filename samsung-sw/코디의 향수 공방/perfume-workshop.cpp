@@ -3,113 +3,83 @@
 
 using namespace std;
 
-const int MAXP = 1105;   // 향료 최대 1000 + 100 = 1100개
-const int MAXS = 3005;   // 향도 최대 3000
-const int INF = 987654321;
-
-int Q, v, w;
-int perfume[MAXP] = { 0, };   // 0: 존재한 적 없음, -1: 폐기됨, 그 외: 향도
-int pcnt;
+int Q, com, val;
+int perfume[1101] = { 0, };
+int pcnt = 0;
 
 void init() {
-    for (int i = 0; i < w; ++i) {
+    for (int i = 0; i < val; ++i) {
         cin >> perfume[pcnt++];
     }
 }
 
-void add_perfume() {
-    perfume[pcnt++] = w;
+void add_func() {
+    perfume[pcnt++] = val;
 }
 
-int delete_perfume() {
-    if (w > pcnt) return -1;      // 존재하지 않는 번호
-    int idx = w - 1;              // 1-based -> 0-based
-    if (perfume[idx] < 1) return -1;   // 이미 폐기됨
-    int scent = perfume[idx];
-    perfume[idx] = -1;
-    return scent;
+int delete_func() {
+    val--;
+    if (perfume[val] == 0)return-1;
+    int tmp = perfume[val];
+    perfume[val] = 0;
+    return tmp;
 }
 
 int blending() {
-    // 사용 가능한 향료의 '서로 다른 향도'만 모은다
-    static bool seen[MAXS];
-    static int arr[MAXP];
-    fill(seen, seen + MAXS, false);
-
-    int tcnt = 0;
+    int arr[1101] = { 0, };
+    int acnt = 0;
+    bool visited[3001] = { false, };
     for (int i = 0; i < pcnt; ++i) {
-        if (perfume[i] > 0 && !seen[perfume[i]]) {
-            arr[tcnt++] = perfume[i];
-            seen[perfume[i]] = true;
+        if (perfume[i] != 0 && !visited[perfume[i]]) {
+            arr[acnt++] = perfume[i];
+            visited[perfume[i]] = true;
         }
     }
-    sort(arr, arr + tcnt);   // 오름차순 -> 안쪽 루프에서 break 가능
 
-    // dp[s] = 합이 정확히 s가 되게 만드는 최소 향료 개수
-    static int dp[MAXS];
+    int dp[3001];
     dp[0] = 0;
-    for (int s = 1; s <= w; ++s) {
-        dp[s] = INF;
-        for (int t = 0; t < tcnt; ++t) {
-            if (arr[t] > s) break;                 // 이후 향도는 더 크므로 볼 필요 없음
-            if (dp[s - arr[t]] + 1 < dp[s])
-                dp[s] = dp[s - arr[t]] + 1;
+    for (int i = 1; i <= val; ++i) {
+        dp[i] = 4000;
+        for (int j = 0; j < acnt; ++j) {
+            if (i >= arr[j] && (dp[i] > (dp[i - arr[j]] + 1)))
+                dp[i] = dp[i - arr[j]] + 1;
         }
     }
-
-    return dp[w] >= INF ? -1 : dp[w];
+    return dp[val] == 4000 ? -1 : dp[val];
 }
 
-// arr[0..n-1]이 오름차순일 때, target 이상인 첫 인덱스를 반환 (없으면 n)
-int lower_idx(int* arr, int n, int target) {
-    int lo = 0, hi = n;               // 답의 후보 구간 [lo, hi]
-    while (lo < hi) {
-        int mid = (lo + hi) / 2;
-        if (arr[mid] >= target) hi = mid;   // mid도 후보 -> 버리지 않는다
-        else lo = mid + 1;                  // mid는 탈락 -> 버린다
-    }
-    return lo;
-}
-
-long long make_up() {
-    static int arr[MAXP];
-    int tcnt = 0;
+int make_up() {
+    int arr[1001];
+    int acnt = 0;
     for (int i = 0; i < pcnt; ++i) {
-        if (perfume[i] > 0) arr[tcnt++] = perfume[i];
+        if (perfume[i] != 0)
+            arr[acnt++] = perfume[i];
     }
-    sort(arr, arr + tcnt);
+    sort(arr, arr + acnt);
 
-    // (탑, 미들, 베이스) 순서쌍, 같은 향료 중복 사용 허용, 합 >= w 인 경우의 수
-    long long ans = 0;
-    for (int i = 0; i < tcnt; ++i) {
-        for (int j = 0; j < tcnt; ++j) {
-            int need = w - arr[i] - arr[j];   // 베이스 자리가 need 이상이어야 함
-
-            if (need <= arr[0]) {             // 전부 통과
-                ans += tcnt;
-                continue;
-            }
-            if (need > arr[tcnt - 1]) continue;   // 전부 탈락
-
-            ans += tcnt - lower_idx(arr, tcnt, need);
+    int ans = 0;
+    for (int i = 0; i < acnt; ++i) {
+        int goals = val - arr[i];
+        int k = acnt;
+        for (int j = 0; j < acnt; ++j) {
+            while (k > 0 && arr[j] + arr[k - 1] >= goals) k--;
+            ans += acnt - k;
         }
     }
+
     return ans;
 }
 
 int main() {
-    ios::sync_with_stdio(0);
-    cin.tie(0); cout.tie(0);
-
+    // Please write your code here.
     cin >> Q;
     for (int i = 0; i < Q; ++i) {
-        cin >> v >> w;
-        if (v == 1) init();
-        else if (v == 2) add_perfume();
-        else if (v == 3) cout << delete_perfume() << "\n";
-        else if (v == 4) cout << blending() << "\n";
+        cin >> com >> val;
+        if (com == 1)init();
+        else if (com == 2)add_func();
+        else if (com == 3)cout << delete_func() << "\n";
+        else if (com == 4)cout << blending() << "\n";
         else cout << make_up() << "\n";
     }
-
     return 0;
 }
