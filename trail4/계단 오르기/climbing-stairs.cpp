@@ -2,27 +2,29 @@
 
 using namespace std;
 
-int dp[1005];
+int n;
+int dp[1001] = { 0,0,1,1, };
+long long ans = 0;
+
+int stairs(int floor) {
+    if (floor < 0)return 0;
+    if (dp[floor] == -1) dp[floor] = (stairs(floor - 2) + stairs(floor - 3))%10007;
+
+    return dp[floor];
+}
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
+    ios::sync_with_stdio(0);
+    cin.tie(0); cout.tie(0);
 
-    int n;
     cin >> n;
 
-    // 초기값 세팅
-    dp[0] = 1;
-    dp[1] = 0;
-    dp[2] = 1;
-    dp[3] = 1;
-
-    // 4층부터 N층까지 점화식 적용
-    for (int i = 4; i <= n; i++) {
-        dp[i] = (dp[i - 2] + dp[i - 3]) % 10007;
+    // Please write your code here.
+    for (int i = 4; i <= n; ++i) {
+        dp[i] = -1;
     }
-
-    cout << dp[n] << "\n";
+    stairs(n);
+    cout << dp[n];
 
     return 0;
 }
