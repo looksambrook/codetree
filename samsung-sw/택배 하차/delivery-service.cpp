@@ -1,128 +1,158 @@
 #include <iostream>
+#include <vector>
+
 using namespace std;
 
 struct Info
 {
-    int r;      // 택배의 맨 위 행 (추가)
-    int c;
-    int w;
-    int h;
-    bool alive; // 아직 격자에 남아 있는지 (추가)
+    int r, c, h, w;
 };
-int N, M, target;
+int N, M, tmp;
+int grid[51][51];
 Info box[101];
-int board[50][50];
 
-// k번 택배를 더 이상 못 내려갈 때까지 한 칸씩 내린다
-void drop(int k) {
-    Info& b = box[k];
-    while (b.r + b.h < N) {                 // 바로 아래 행이 격자 안일 때만
-        int below = b.r + b.h;
-        bool can = true;
-        for (int j = b.c; j < b.c + b.w; ++j) {
-            if (board[below][j] != 0) {     // 아래에 다른 택배가 있으면
-                can = false;
+void input(int num) {
+    tmp = 0;
+    for (int i = box[num].h+box[num].r; i < N; ++i) {
+        for (int j = box[num].c; j < box[num].c + box[num].w; ++j) {
+            if (grid[i][j] != 0) {
+                i = N;
                 break;
             }
         }
-        if (!can) break;
-
-        for (int j = b.c; j < b.c + b.w; ++j) {
-            board[b.r][j] = 0;              // 맨 윗줄을 비우고
-            board[below][j] = k;            // 한 칸 아래 줄을 채운다
+        if (i != N)
+            tmp++;
+    }
+    box[num].r += tmp;
+    for (int i = 0; i < box[num].h; ++i) {
+        for (int j = 0; j < box[num].w; ++j) {
+            grid[i + box[num].r][box[num].c + j] = num;
         }
-        b.r++;
     }
 }
 
-// 남아 있는 모든 택배에 중력 적용
-// 아래에 있는 택배(바닥 행 번호가 큰 택배)부터 떨어뜨려야 한 번에 정리된다
-void gravity() {
-    for (int bottom = N - 1; bottom >= 0; --bottom) {
-        for (int k = 1; k <= 100; ++k) {
-            if (box[k].alive && box[k].r + box[k].h - 1 == bottom) {
-                drop(k);
+void remove(int num) {
+    cout << num << "\n";
+    int target = num;
+    vector<int> v;
+    for (int i = box[target].r; i < box[target].r + box[target].h; ++i) {
+        for (int j = box[target].c; j < box[target].c + box[target].w; ++j) {
+            grid[i][j] = 0;
+        }
+    }
+
+    for (int i = box[target].c; i < box[target].c + box[target].w; ++i) {
+        if (box[target].r>0&&grid[box[target].r - 1][i] != 0) {
+            bool is_down = true;
+            for (int j = box[grid[box[target].r - 1][i]].c; j < box[grid[box[target].r - 1][i]].c + box[grid[box[target].r - 1][i]].w; ++j) {
+                if (grid[box[target].r][j] != 0) {
+                    is_down = false;
+                    break;
+                }
+            }
+            if (is_down)v.push_back(grid[box[target].r - 1][i]);
+            i = box[grid[box[target].r - 1][i]].c + box[grid[box[target].r - 1][i]].w-1;
+        }
+    }
+
+    for (int vc = 0; vc < v.size(); ++vc) {
+        target = v[vc];
+        int cx = box[target].r;
+        int cy = box[target].c;
+        int cw = box[target].w;
+
+        for (int i = cx; i < cx + box[target].h; ++i) {
+            for (int j = cy; j < cy + cw; ++j) {
+                grid[i][j] = 0;
             }
         }
-    }
-}
+        input(target);
 
-// k번 택배를 격자에서 지운다
-void remove_box(int k) {
-    for (int i = box[k].r; i < box[k].r + box[k].h; ++i) {
-        for (int j = box[k].c; j < box[k].c + box[k].w; ++j) {
-            board[i][j] = 0;
-        }
-    }
-    box[k].alive = false;
-}
-
-void left_out() {
-    int cnt[101] = { 0 };   // cnt[k] : k번 택배가 "왼쪽에서 제일 먼저 보이는" 행의 수
-    for (int i = 0; i < N; ++i) {
-        for (int j = 0; j < N; ++j) {
-            if (board[i][j] != 0) {
-                cnt[board[i][j]]++;
-                break;
+        for (int i = cy; i < cy + cw; ++i) {
+            if (cx>0&&grid[cx - 1][i] != 0) {
+                bool is_down = true;
+                for (int j = box[grid[cx - 1][i]].c; j < box[grid[cx - 1][i]].c + box[grid[cx - 1][i]].w; ++j) {
+                    if (grid[cx][j] != 0) {
+                        is_down = false;
+                        break;
+                    }
+                }
+                if (is_down)v.push_back(grid[cx - 1][i]);
+                i = box[grid[cx - 1][i]].c + box[grid[cx - 1][i]].w-1;
             }
         }
+
     }
-    // 자기 행 h개 모두에서 제일 먼저 보이면 왼쪽으로 뺄 수 있음
-    for (int k = 1; k <= 100; ++k) {
-        if (box[k].alive && cnt[k] == box[k].h) {
-            target = k;     // 번호 작은 것부터 보므로 처음 찾은 게 정답
-            break;
-        }
-    }
-    remove_box(target);
 }
 
-void right_out() {
-    int cnt[101] = { 0 };
-    for (int i = 0; i < N; ++i) {
-        for (int j = N - 1; j >= 0; --j) {
-            if (board[i][j] != 0) {
-                cnt[board[i][j]]++;
-                break;
-            }
-        }
-    }
-    for (int k = 1; k <= 100; ++k) {
-        if (box[k].alive && cnt[k] == box[k].h) {
-            target = k;
-            break;
-        }
-    }
-    remove_box(target);
-}
 
 int main() {
-    // Please write your code here.
-    int k, h, w, c;
+    ios::sync_with_stdio(0);
+    cin.tie(0); cout.tie(0);
+
     cin >> N >> M;
-    for (int i = 0; i < M; ++i) {
+    for (int tc = 0; tc < M; ++tc) {
+        int k, h, w, c;
         cin >> k >> h >> w >> c;
-        c--;
-        box[k] = { 0, c, w, h, true };      // 맨 위(0행)에 놓고
-        for (int j = 0; j < h; ++j) {
-            for (int z = 0; z < w; ++z) {
-                board[j][c + z] = k;
-            }
-        }
-        drop(k);                            // 바닥이나 다른 택배에 닿을 때까지 떨어뜨림
+        box[k] = { 0,c - 1,h,w };
+        input(k);
     }
 
-    for (int i = 0; i < M; ++i) {
-        left_out();
-        cout << target << "\n";
-        gravity();
-
-        if (i != M - 1) {
-            i++;
-            right_out();
-            cout << target << "\n";
-            gravity();
+    for (int tc = 0; tc < M; ++tc) {
+        /*cout << "hi:\n";
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < N; ++j) {
+                cout << grid[i][j] << " ";
+            }
+            cout << "\n";
+        }*/
+        int target = 2000;
+        int check[51] = { 0, };
+        if (tc % 2 == 0) {
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < N; ++j) {  //left
+                    if (grid[i][j] != 0) {
+                        check[i] = grid[i][j];
+                        break;
+                    }
+                }
+            }
+            int len = 1;
+            for (int i = 0; i < N; ++i) {
+                if (i == N-1) {
+                    if (check[i] != 0 && box[check[i]].h == len)target = target > check[i] ? check[i] : target;
+                    break;
+                }
+                if (check[i] == check[i+1])len++;
+                else {
+                    if (check[i]!= 0 && box[check[i]].h == len)target = target > check[i] ? check[i] : target;
+                        len = 1;
+                }
+            }
         }
+        else {
+            for (int i = 0; i < N; ++i) {
+                for (int j = N-1; j >=0; --j) {  //right
+                    if (grid[i][j] != 0) {
+                        check[i] = grid[i][j];
+                        break;
+                    }
+                }
+            }
+            int len = 1;
+            for (int i = 0; i < N; ++i) {
+                if (i == N - 1) {
+                    if (check[i] != 0 && box[check[i]].h == len)target = target > check[i] ? check[i] : target;
+                    break;
+                }
+                if (check[i] == check[i + 1])len++;
+                else {
+                    if (check[i] != 0 && box[check[i]].h == len)target = target > check[i] ? check[i] : target;
+                    len = 1;
+                }
+            }
+        }
+        remove(target);
     }
 
     return 0;
