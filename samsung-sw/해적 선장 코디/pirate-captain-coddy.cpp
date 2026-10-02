@@ -1,23 +1,41 @@
 #include <iostream>
 #include <unordered_map>
-#include <set>
+#include <queue>
+#include <vector>
+#include <functional>
 
 using namespace std;
 
 struct Info {
-    int id, p, r, delay;
+    int id, p, r;
+};
+struct Node {
+    int p, id, idx, ver;
+
+    bool operator<(const Node& other)const {
+        if (p != other.p)return p < other.p;   // 공격력 큰 게 top
+        return id > other.id;                  // 같으면 id 작은 게 top
+    }
 };
 
 int T;
 Info ship[60001];
+int ver[60001];        // 배마다 가장 최근에 넣은 항목 번호
+bool cooling[60001];   // 재장전 중인지
 int scnt = 0;
 unordered_map<int, int> m;
-set<pair<int, int>> s;   // {-공격력, id} : 공격력 큰 순, 같으면 id 작은 순
+priority_queue<Node> ready;   // 공격 가능한 배 (옛 항목 섞여 있음)
+priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> cool;   // {재장전 끝나는 시각, idx}
+
+void push_ready(int idx) {
+    ++ver[idx];   // 이전에 넣은 항목은 전부 무효가 됨
+    ready.push({ ship[idx].p, ship[idx].id, idx, ver[idx] });
+}
 
 void add(int id, int p, int r) {
-    ship[scnt] = { id,p,r,-60000 };
-    m[id] = scnt++;
-    s.insert({ -p, id });
+    ship[scnt] = { id,p,r };
+    m[id] = scnt;
+    push_ready(scnt++);
 }
 
 void init() {
@@ -39,21 +57,29 @@ void add_ship() {
 void change_ship() {
     int id, pw;
     cin >> id >> pw;
-    Info& sh = ship[m[id]];
-    s.erase({ -sh.p, id });   // 옛 공격력 항목은 바로 지움
-    sh.p = pw;
-    s.insert({ -pw, id });
+    int idx = m[id];
+    ship[idx].p = pw;
+    if (!cooling[idx])push_ready(idx);   // 재장전 중이면 끝날 때 새 공격력으로 들어감
 }
 
 void attack(int cur) {
+    // 재장전이 끝난 배를 공격 가능 큐로 옮김
+    while (!cool.empty() && cool.top().first <= cur) {
+        int idx = cool.top().second;
+        cool.pop();
+        cooling[idx] = false;
+        push_ready(idx);
+    }
+
     int ids[5], sum = 0, point = 0;
-    for (auto it = s.begin(); it != s.end() && point < 5; ++it) {
-        Info& sh = ship[m[it->second]];
-        if (cur - sh.delay >= sh.r) {
-            ids[point++] = sh.id;
-            sum += sh.p;
-            sh.delay = cur;
-        }
+    while (!ready.empty() && point < 5) {
+        Node t = ready.top();
+        ready.pop();
+        if (t.ver != ver[t.idx])continue;   // 옛 항목은 버림
+        ids[point++] = t.id;
+        sum += t.p;
+        cooling[t.idx] = true;
+        cool.push({ cur + ship[t.idx].r, t.idx });
     }
     cout << sum << " " << point << " ";
     for (int i = 0; i < point; ++i)cout << ids[i] << " ";
