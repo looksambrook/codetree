@@ -1,212 +1,209 @@
 #include <iostream>
-#include <vector>
 #include <queue>
-#include <algorithm>
-#include <unordered_set>
+#include <vector>
 
 using namespace std;
 
-struct Microbe {
-    int id;
-    int size;
-    vector<pair<int, int> > shape; // (0, 0) 기준 상대 좌표
+struct Info {
+    int birth;
+    int sum;
+    vector<vector<bool>> shape;
 
-    bool operator<(const Microbe& other) const {
-        if (size != other.size) return size < other.size; // 넓이 큰 순
-        return id > other.id;                            // 투입 빠른 순
+    bool operator<(const Info& other)const {
+        if (sum != other.sum)return sum < other.sum;
+        return birth > other.birth;
     }
 };
-
 int N, Q;
-int board[20][20];
-int dx[] = {-1, 0, 1, 0};
-int dy[] = {0, -1, 0, 1};
+int grid[16][16];
+Info mi[51];
+bool is_deleted[51] = { false, };
+int dx[] = { 0,1,0,-1 };
+int dy[] = { 1,0,-1,0 };
 
-// 1. 미생물 투입 및 영역 분리 검사
-void add_mi(int id, int r1, int c1, int r2, int c2) {
-    unordered_set<int> touched;
+bool is_range(int x,int y) {
+    return x >= 0 && x < N
+        && y >= 0 && y < N;
+}
 
-    // 영역 덮어쓰기
-    for (int i = r1; i < r2; ++i) {
-        for (int j = c1; j < c2; ++j) {
-            if (board[i][j] != 0 && board[i][j] != id) {
-                touched.insert(board[i][j]);
+void check_grid() {
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            cout << grid[i][j] << " ";
+        }
+        cout << "\n";
+    }
+    cout << "\n";
+}
+
+void input(int sx,int ex,int sy,int ey,int num) {
+    bool visited[51] = { false, };
+    mi[num] = { num,(ex - sx) * (ey - sy),{} };
+    mi[num].shape.resize(N);
+    for (int i = sx; i < ex; ++i) {
+        mi[num].shape[i].clear();
+        for (int j = sy; j < ey; ++j) {
+            if (grid[i][j] != 0) {
+                mi[grid[i][j]].sum -= 1;
+                if(!visited[grid[i][j]]) visited[grid[i][j]]=true;
             }
-            board[i][j] = id;
+            grid[i][j] = num;
+            mi[num].shape[i - sx].push_back(true);
         }
     }
+    //list delete and check 2-piece / update shape
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            if (grid[i][j]!=0&&visited[grid[i][j]]) {
+                visited[grid[i][j]] = false;
 
-    // 피해를 입은 미생물들이 2개 이상의 영역으로 쪼개졌는지 BFS 검사
-    for (unordered_set<int>::iterator it = touched.begin(); it != touched.end(); ++it) {
-        int target = *it;
-        int comp_count = 0;
-        bool visited[20][20] = {false};
+                int sr = i, sc = j, er = i, ec = j, cnt = 0;
+                bool check[51][51] = { false, };
+                queue<pair<int, int>> q;
 
-        for (int i = 0; i < N; ++i) {
-            for (int j = 0; j < N; ++j) {
-                if (board[i][j] == target && !visited[i][j]) {
-                    comp_count++;
-                    queue<pair<int, int> > q;
-                    q.push(make_pair(i, j));
-                    visited[i][j] = true;
+                q.push({ i,j });
+                check[i][j] = true;
+                while (!q.empty()) {
+                    int cx = q.front().first;
+                    int cy = q.front().second;
+                    q.pop();
 
-                    while (!q.empty()) {
-                        pair<int, int> cur = q.front();
-                        q.pop();
-                        int cx = cur.first;
-                        int cy = cur.second;
+                    sr = sr > cx ? cx : sr;
+                    sc = sc > cy ? cy : sc;
+                    er = er < cx ? cx : er;
+                    ec = ec < cy ? cy : ec;
+                    cnt++;
+                    for (int d = 0; d < 4; ++d) {
+                        int nx = cx + dx[d];
+                        int ny = cy + dy[d];
+                        if (!is_range(nx, ny)||check[nx][ny])continue;
+                            check[nx][ny] = true;
+                        if (grid[i][j] == grid[nx][ny]) {
+                            q.push({ nx,ny });
+                        }
+                    }
+                }
+                //cout <<grid[i][j]<<": "<< sr << " " << er << " / " << sc << " " << ec << "\n";
+                if (cnt != mi[grid[i][j]].sum)is_deleted[grid[i][j]] = true;
 
-                        for (int d = 0; d < 4; ++d) {
-                            int nx = cx + dx[d];
-                            int ny = cy + dy[d];
-                            if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
-                            if (!visited[nx][ny] && board[nx][ny] == target) {
-                                visited[nx][ny] = true;
-                                q.push(make_pair(nx, ny));
-                            }
+                else {
+                    mi[grid[i][j]].shape.clear();
+                    mi[grid[i][j]].shape.resize(N);
+                    for (int r = 0; r < N; ++r) {
+                        mi[grid[i][j]].shape[r].clear();
+                        if (r > er - sr)continue;
+                        for (int c = 0; c <=ec-sc; ++c) {
+                            if (!is_range(r + sr, c + sc))continue;
+                            mi[grid[i][j]].shape[r].push_back(grid[r + sr][c + sc] == grid[i][j] ? true : false);
                         }
                     }
                 }
             }
         }
-
-        // 영역이 2개 이상으로 분리되었다면 완전히 소멸
-        if (comp_count >= 2) {
-            for (int i = 0; i < N; ++i) {
-                for (int j = 0; j < N; ++j) {
-                    if (board[i][j] == target) board[i][j] = 0;
-                }
-            }
-        }
     }
 }
 
-// 2. 배양 용기 이동
-void move() {
-    // 현재 보드에 존재하는 모든 미생물의 셀 수집
-    vector<pair<int, int> > cells[55];
+void moving() {
+    int temp[16][16] = { 0, };
+    bool visited[51] = { false, };
+    priority_queue<Info> pq;
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            if (board[i][j] > 0) {
-                cells[board[i][j]].push_back(make_pair(i, j));
+            if (grid[i][j]!=0&&!visited[grid[i][j]]&&!is_deleted[grid[i][j]]) {
+                visited[grid[i][j]] = true;
+                pq.push(mi[grid[i][j]]);
             }
         }
     }
-
-    priority_queue<Microbe> pq;
-    for (int i = 1; i <= Q; ++i) {
-        if (cells[i].empty()) continue;
-
-        int min_r = 1e9, min_c = 1e9;
-        for (size_t k = 0; k < cells[i].size(); ++k) {
-            min_r = min(min_r, cells[i][k].first);
-            min_c = min(min_c, cells[i][k].second);
-        }
-
-        vector<pair<int, int> > shape;
-        for (size_t k = 0; k < cells[i].size(); ++k) {
-            shape.push_back(make_pair(cells[i][k].first - min_r, cells[i][k].second - min_c));
-        }
-        Microbe m;
-        m.id = i;
-        m.size = (int)cells[i].size();
-        m.shape = shape;
-        pq.push(m);
-    }
-
-    int temp[20][20] = {0};
-
     while (!pq.empty()) {
-        Microbe cur = pq.top();
+        Info curr = pq.top();
+        //cout << "check: " << curr.birth << "\n";
         pq.pop();
+        /*for (int i = 0; i < curr.shape.size(); ++i) {
+            for (int j = 0; j < curr.shape[i].size(); ++j) {
+                cout << curr.shape[i][j] << " ";
+            }
+            cout << "\n";
+        }*/
 
-        int best_r = -1, best_c = -1;
-        bool placed = false;
-
-        // x(행) 작은 순 -> y(열) 작은 순 탐색
-        for (int r = 0; r < N && !placed; ++r) {
-            for (int c = 0; c < N && !placed; ++c) {
-                bool can_place = true;
-
-                for (size_t s = 0; s < cur.shape.size(); ++s) {
-                    int nr = r + cur.shape[s].first;
-                    int nc = c + cur.shape[s].second;
-                    if (nr < 0 || nr >= N || nc < 0 || nc >= N || temp[nr][nc] != 0) {
-                        can_place = false;
-                        break;
+        for (int j = 0; j < N; ++j) {
+            for (int i = N - 1; i >= 0; --i) {
+                bool is_write = true;
+                int cnt = 0;
+                for (int r = i; r < i+curr.shape.size(); ++r) {
+                    for (int c = j; c < j+ curr.shape[r - i].size(); ++c) {
+                        if (!is_range(r,c)||(curr.shape[r-i][c-j]&&temp[r][c]!=0)) {
+                            is_write = false;
+                            r = i+curr.shape.size();
+                            break;
+                        }
+                        if(is_range(r-i,c-j)&&curr.shape[r-i][c-j]) cnt++;
                     }
                 }
-
-                if (can_place) {
-                    best_r = r;
-                    best_c = c;
-                    placed = true;
+                if (cnt != curr.sum)is_write = false;
+                if (is_write) {
+                    //cout << "cehck plz\n";
+                    for (int r = 0; r <curr.shape.size(); ++r) {
+                        for (int c = 0; c < curr.shape[r].size(); ++c) {
+                            if(curr.shape[r][c])temp[i+r][j+c] = curr.birth;
+                        }
+                    }
+                    j = N;
+                    break;
                 }
-            }
-        }
-
-        // 배치 가능한 경우에만 새 보드에 기록 (불가능하면 자연 소멸)
-        if (placed) {
-            for (size_t s = 0; s < cur.shape.size(); ++s) {
-                temp[best_r + cur.shape[s].first][best_c + cur.shape[s].second] = cur.id;
             }
         }
     }
 
-    // 새 보드로 교체
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            board[i][j] = temp[i][j];
+            grid[i][j] = temp[i][j];
         }
     }
 }
 
-// 3. 실험 결과 점수 계산
-int get_score() {
-    int area[55] = {0};
+int cal() {
+    int ans = 0;
+    bool visited[51][51] = { false, };
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            if (board[i][j] > 0) area[board[i][j]]++;
-        }
-    }
-
-    bool checked[55][55] = {false};
-    int total_score = 0;
-
-    for (int i = 0; i < N; ++i) {
-        for (int j = 0; j < N; ++j) {
-            if (board[i][j] == 0) continue;
-            int u = board[i][j];
-
-            for (int d = 0; d < 4; ++d) {
-                int ni = i + dx[d];
-                int nj = j + dy[d];
-                if (ni < 0 || ni >= N || nj < 0 || nj >= N) continue;
-                if (board[ni][nj] == 0) continue;
-
-                int v = board[ni][nj];
-                if (u != v && !checked[u][v]) {
-                    checked[u][v] = checked[v][u] = true;
-                    total_score += area[u] * area[v];
+            if (grid[i][j] == 0)continue;
+            int curr = grid[i][j];
+            int next;
+            if (i != N - 1) {
+                next = grid[i + 1][j];
+                if (next != 0 && curr != next && !visited[curr][next]) {
+                    visited[curr][next] = true;
+                    visited[next][curr] = true;
+                    ans += mi[curr].sum * mi[next].sum;
+                }
+            }
+            if (j != N - 1) {
+                next = grid[i][j + 1];
+                if (next != 0 && curr != next && !visited[curr][next]) {
+                    visited[curr][next] = true;
+                    visited[next][curr] = true;
+                    ans += mi[curr].sum * mi[next].sum;
                 }
             }
         }
     }
-
-    return total_score;
+    return ans;
 }
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(NULL);
+    ios::sync_with_stdio(0);
+    cin.tie(0); cout.tie(0);
 
     cin >> N >> Q;
     for (int tc = 1; tc <= Q; ++tc) {
-        int r1, c1, r2, c2;
+        int r1, r2, c1, c2;
         cin >> r1 >> c1 >> r2 >> c2;
-        add_mi(tc, r1, c1, r2, c2);
-        move();
-        cout << get_score() << "\n";
+        input(N-c2,N-c1,r1,r2,tc);
+        //check_grid();
+        moving();
+        //check_grid();
+        cout << cal() << "\n";
     }
 
     return 0;
