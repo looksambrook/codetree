@@ -3,101 +3,90 @@
 
 using namespace std;
 
-bool board[50][50] = { false, };
-bool visited[50][50] = { false, };
-int N, r, c, d;
-int dx[4] = { -1,1,0,0 };
-int dy[4] = { 0,0,-1,1 };
-
-struct Info
-{
-    int r;
-    int c;
-    int d;
-
-    bool operator<(const Info& other) const{
-        if (r != other.r) return r > other.r;
-        return c > other.c;
-    }
+int N, cr, cc, cd, K;
+int grid[51][51];
+int dx[] = { -1,1,0,0 };
+int dy[] = { 0,0,-1,1 };
+int dm[4][4] = {
+    {0,2,3,1},
+    {1,3,2,1},
+    {2,1,0,3},
+    {3,0,1,2}
 };
+int ds[] = { 2,1,3,0 };
 
 bool is_range(int x, int y) {
     return x >= 0 && x < N
-        && y >= 0 && y < N
-        && !board[x][y];
-}
-
-bool first_step() {
-    int df[4][4] = { 0,2,3,1,1,3,2,0,2,1,0,3,3,0,1,2 };
-    for (int i = 0; i < 4; ++i) {
-        int nd = df[d][i];
-        int nx = r + dx[nd];
-        int ny = c + dy[nd];
-        if (is_range(nx, ny) && !visited[nx][ny] && !board[nx][ny]) {
-            r = nx, c = ny, d = nd;
-            visited[r][c] = true;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool second_step() {
-    int ds[4] = { 2,1,3,0 };
-    queue<Info> q;
-    priority_queue<Info> ans;
-    q.push({ r,c,d });
-    bool selected[50][50] = { false, };
-    selected[r][c] = true;
-
-    while (ans.empty()) {
-        int cnt = q.size();
-        if (cnt == 0)return false;
-        for (int j = 0; j < cnt; ++j) {
-            int cx = q.front().r;
-            int cy = q.front().c;
-            int cd = q.front().d;
-            q.pop();
-
-            for (int i = 0; i < 4; ++i) {
-                int nd = ds[i];
-                int nx = cx + dx[nd];
-                int ny = cy + dy[nd];
-                if (is_range(nx, ny) && !selected[nx][ny] && !board[nx][ny]) {
-                    selected[nx][ny] = true;
-                    if (visited[nx][ny])q.push({ nx,ny,nd });
-                    else {
-                        ans.push({ nx,ny,nd });
-                    }
-                }
-            }
-        }
-    }
-
-    r = ans.top().r;
-    c = ans.top().c;
-    d = ans.top().d;
-    visited[r][c] = true;
-    return true;
+        && y >= 0 && y < N;
 }
 
 int main() {
-    // Please write your code here.
-    cin >> N >> r >> c >> d;
-    r -= 1, c -= 1, d -= 1;
-    visited[r][c] = true;
-
+    ios::sync_with_stdio(0);
+    cin.tie(0); cout.tie(0);
+    cin >> N >> cr >> cc >> cd;
+    cr--, cc--, cd--;
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            cin >> board[i][j];
+            cin >> grid[i][j];
+            grid[i][j] *= -1;
+            if (grid[i][j] == 0)K++;
         }
     }
 
-    while (true) {
-        cout << r + 1 << " " << c + 1 << "\n";
-        if (first_step())continue;
-        if (second_step())continue;
-        break;
+    for (int tc = 1; tc <= K; ++tc) {
+        cout << cr + 1 << " " << cc + 1 << "\n";
+        if (tc == K)continue;
+        grid[cr][cc] = tc;
+        bool is_move = false;
+        for (int d = 0; d < 4; ++d) {
+            int nx = cr + dx[dm[cd][d]];
+            int ny = cc + dy[dm[cd][d]];
+            if (!is_range(nx, ny) || grid[nx][ny] != 0)continue;
+            is_move = true;
+            cr = nx;
+            cc = ny;
+            cd = dm[cd][d];
+            break;
+        }
+        if (is_move)continue;
+
+        queue<pair<int, int>> q;
+        int visited[52][52] = { 0, };
+        int tx = 51, ty = 51, td = cd;
+        q.push({ cr,cc });
+        visited[cr][cc] = 1;
+        visited[tx][ty] = 3000;
+        while (!q.empty()) {
+            int r = q.front().first;
+            int c = q.front().second;
+            q.pop();
+
+            for (int d = 0; d < 4; ++d) {
+                int nx = r + dx[ds[d]];
+                int ny = c + dy[ds[d]];
+                if (!is_range(nx, ny) || visited[nx][ny] != 0 || grid[nx][ny] < 0)continue;
+                visited[nx][ny] = visited[r][c] + 1;
+                if (visited[tx][ty] < visited[nx][ny])continue;
+                if (grid[nx][ny] == 0) {
+                    if (visited[nx][ny] == visited[tx][ty]) {
+                        if (tx == nx) {
+                            if (ty > ny) {
+                                ty = ny, td = ds[d];
+                            }
+                        }
+                        else if (tx > nx) {
+                            tx = nx, ty = ny, td = ds[d];
+
+                        }
+                    }
+                    else if (visited[nx][ny] < visited[tx][ty]) {
+                        tx = nx, ty = ny, td = ds[d];
+                    }
+                }
+                else q.push({ nx,ny });
+            }
+        }
+        cr = tx, cc = ty, cd = td;
     }
 
     return 0;
