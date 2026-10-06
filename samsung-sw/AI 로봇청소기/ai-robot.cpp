@@ -1,129 +1,143 @@
 #include <iostream>
 #include <queue>
-#include <climits>
 
 using namespace std;
 
-struct Info
-{
-    int x;
-    int y;
-    int tmp = 0;
+struct Info {
+    int x, y;
 };
 
 int N, K, L;
-int room[30][30];
-Info clean_bot[50];
-
-int dx[4] = { 0,-1,0,1 };
-int dy[4] = { -1,0,1,0 };
+int grid[31][31];
+int rocation[31][31];
+Info cleaner[51];
+int dx[] = { 0,1,0,-1 };
+int dy[] = { 1,0,-1,0 };
+int cal;
 
 bool is_range(int x, int y) {
     return x >= 0 && x < N
         && y >= 0 && y < N;
 }
 
-void moving(int num) {
-    int cx = clean_bot[num].x;
-    int cy = clean_bot[num].y;
-    if (room[cx][cy] > 0) return;
+void first_step() {
+    for (int i = 1; i <= K; ++i) {
+        int x = cleaner[i].x;
+        int y = cleaner[i].y;
+        if (grid[x][y] != 0)continue;
+        rocation[x][y] = 0;
 
-    queue<Info> q;
-    q.push({ cx,cy,0 });
-    bool visited[30][30] = { false, };
-    for (int i = 0; i < K; ++i) {
-        visited[clean_bot[i].x][clean_bot[i].y] = true;
-    }
-    Info ans = { N,N,INT_MAX };
+        queue<pair<Info, int>>q;
+        bool visited[31][31] = { false, };
+        q.push({ {x,y},0 });
+        visited[x][y] = true;
 
-    while (!q.empty()) {
-        cx = q.front().x;
-        cy = q.front().y;
-        int cnt = q.front().tmp;
-        q.pop();
+        Info target = { N,N };
+        int tcnt = 1000;
 
-        for (int d = 0; d < 4; ++d) {
-            int nx = cx + dx[d];
-            int ny = cy + dy[d];
-            if (!is_range(nx, ny))continue;
-            if (visited[nx][ny])continue;
-            if (room[nx][ny] == -1)continue;
+        while (!q.empty()) {  //visited, rocation, grid, is_range
+            int cx = q.front().first.x;
+            int cy = q.front().first.y;
+            int ccnt = q.front().second;
+            q.pop();
 
-            visited[nx][ny] = true;
-            if (room[nx][ny] == 0)
-                q.push({ nx,ny,cnt + 1 });
-            else if (ans.tmp == cnt + 1) {
-                if (ans.x > nx || (ans.x == nx && ans.y > ny))ans = { nx,ny,cnt + 1 };
+            if (grid[cx][cy] > 0) {
+                if (tcnt > ccnt) {
+                    target = { cx,cy };
+                    tcnt = ccnt;
+                }
+                else if (tcnt == ccnt) {
+                    if (target.x > cx) {
+                        target = { cx,cy };
+                        tcnt = ccnt;
+                    }
+                    else if (target.x == cx) {
+                        if (target.y > cy) {
+                            target = { cx,cy };
+                            tcnt = ccnt;
+                        }
+                    }
+                }
+                continue;
             }
-            else if (ans.tmp > cnt + 1) {
-                ans = { nx,ny,cnt + 1 };
+
+            for (int d = 0; d < 4; ++d) {
+                int nx = cx + dx[d];
+                int ny = cy + dy[d];
+                if (!is_range(nx, ny) || visited[nx][ny] || rocation[nx][ny] != 0 || grid[nx][ny] == -1)continue;
+                visited[nx][ny] = true;
+                if (ccnt > tcnt)break;
+                q.push({ {nx,ny},ccnt + 1 });
             }
         }
-    }
-    if (ans.tmp == INT_MAX)return;
-    clean_bot[num] = ans;
-}
-
-void cleaning(int num) {
-    int cx = clean_bot[num].x;
-    int cy = clean_bot[num].y;
-    int ans = 0;
-    int check = -1;
-    for (int del = 0; del < 4; ++del) {
-        int sum = 0;
-        for (int d = 0; d < 4; ++d) {
-            if (d == del)continue;
-            int nx = cx + dx[d];
-            int ny = cy + dy[d];
-            if (!is_range(nx, ny))continue;
-            if (room[nx][ny] == -1)continue;
-            int tmp = room[nx][ny] <= 20 ? room[nx][ny] : 20;
-            sum += tmp;
-        }
-        if (ans < sum) {
-            ans = sum;
-            check = del;
-        }
-    }
-
-    room[cx][cy] = room[cx][cy] < 20 ? 0 : room[cx][cy] - 20;
-    if (check == -1)return;
-    for (int d = 0; d < 4; ++d) {
-        if (d == check)continue;
-        int nx = cx + dx[d];
-        int ny = cy + dy[d];
-        if (!is_range(nx, ny))continue;
-        if (room[nx][ny] == -1)continue;
-
-        room[nx][ny] = room[nx][ny] < 20 ? 0 : room[nx][ny] - 20;
+        if (tcnt!=1000) cleaner[i] = target;
+        rocation[cleaner[i].x][cleaner[i].y] = i;
     }
 }
 
-void dusty() {
+void clean() {
+    for (int i = 1; i <= K; ++i) {
+        int sum = 0, td;
+        for (int dd = 2; dd < 6; ++dd) {
+            int tmp = 0;
+            for (int d = 0; d < 4; ++d) {
+                if (d == (dd % 4))continue;
+                int nx = cleaner[i].x + dx[d];
+                int ny = cleaner[i].y + dy[d];
+                if (!is_range(nx, ny) || grid[nx][ny] == -1)continue;
+                if (grid[nx][ny] > 20)tmp += 20;
+                else tmp += grid[nx][ny];
+            }
+            if (sum < tmp) {
+                sum = tmp, td = dd % 4;
+            }
+        }
+
+        if (sum != 0) {
+            for (int d = 0; d < 4; ++d) {
+                if (d == td )continue;
+                int nx = cleaner[i].x + dx[d];
+                int ny = cleaner[i].y + dy[d];
+                if (!is_range(nx, ny) || grid[nx][ny] == -1)continue;
+                sum = grid[nx][ny] > 20 ? 20 : grid[nx][ny];
+                grid[nx][ny] -= sum;
+            }
+        }
+        sum = grid[cleaner[i].x][cleaner[i].y] > 20 ? 20 : grid[cleaner[i].x][cleaner[i].y];
+        grid[cleaner[i].x][cleaner[i].y] -= sum;
+    }
+}
+
+void dirt() {
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            if (room[i][j] > 0)
-                room[i][j] += 5;
+            if (grid[i][j] > 0) {
+                grid[i][j] += 5;
+            }
         }
     }
 }
 
 void spread() {
-    bool visited[30][30] = { false, };
+    int temp[31][31] = { 0, };
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            if (room[i][j] == 0) {
-                int sum = 0;
-                visited[i][j] = true;
-                for (int d = 0; d < 4; ++d) {
-                    int nx = i + dx[d];
-                    int ny = j + dy[d];
-                    if (!is_range(nx, ny))continue;
-                    if (visited[nx][ny])continue;
-                    if (room[nx][ny] > 0)sum += room[nx][ny];
-                }
-                room[i][j] = sum / 10;
+            if (grid[i][j] != 0)continue;
+            int sum = 0;
+            for (int d = 0; d < 4; ++d) {
+                int nx = i + dx[d];
+                int ny = j + dy[d];
+                if (!is_range(nx, ny) || grid[nx][ny] == -1)continue;
+                sum += grid[nx][ny];
             }
+            temp[i][j] = (sum / 10);
+        }
+    }
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            grid[i][j] += temp[i][j];
+            if (grid[i][j] != -1)cal += grid[i][j];
         }
     }
 }
@@ -135,30 +149,25 @@ int main() {
     cin >> N >> K >> L;
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
-            cin >> room[i][j];
+            cin >> grid[i][j];
         }
     }
-    for (int i = 0; i < K; ++i) {
+    for (int i = 1; i <= K; ++i) {
         int r, c;
         cin >> r >> c;
-        clean_bot[i] = { r - 1,c - 1 };
+        r--, c--;
+        cleaner[i] = { r,c };
+        rocation[r][c] = i;
     }
 
     for (int tc = 1; tc <= L; ++tc) {
-        for (int i = 0; i < K; ++i)
-            moving(i);
-        for (int i = 0; i < K; ++i)
-            cleaning(i);
-        dusty();
+        cal = 0;
+        first_step();
+        clean();
+        dirt();
         spread();
-
-        int sum = 0;
-        for (int i = 0; i < N; ++i) {
-            for (int j = 0; j < N; ++j) {
-                if (room[i][j] > 0)sum += room[i][j];
-            }
-        }
-        cout << sum << "\n";
+        cout << cal << "\n";
     }
+
     return 0;
 }
