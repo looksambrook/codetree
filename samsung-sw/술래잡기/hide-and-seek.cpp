@@ -83,22 +83,8 @@ void sul() {
     if (sul_cnt == 0 || sul_cnt == (N * N)-1)rev = !rev;
     if (rev)sul_cnt--;
     else sul_cnt++;
-    //int cd = sul_line[sul_cnt].dir;
-    //if (rev)cd = (cd + 2) % 4;
-    int cd;
-
-    if (sul_cnt == 0) {
-        cd = 0; // 중앙 도착: 위
-    }
-    else if (sul_cnt == N * N - 1) {
-        cd = 2; // (1,1) 도착: 아래
-    }
-    else if (rev) {
-        cd = (sul_line[sul_cnt - 1].dir + 2) % 4;
-    }
-    else {
-        cd = sul_line[sul_cnt].dir;
-    }
+    int cd = sul_line[sul_cnt].dir;
+    if (rev)cd = (sul_line[sul_cnt-1].dir + 2) % 4;
 
     for (int sight = 0; sight < 3; ++sight) {
         int cx = sul_line[sul_cnt].r + sight * dx[cd];
